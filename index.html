@@ -129,13 +129,13 @@ body.tech .search,body.tech .filters{display:none}
       </table><div class="empty" id="empty"></div>
     </div>
   <div class="scroll" id="wopage" style="display:none"><table><thead><tr><th><span class="cb"></span><span data-t="Title">Title</span></th><th data-t="Status">Status</th><th data-t="Priority">Priority</th><th data-t="Assignee">Assignee</th><th data-t="Due date">Due date</th><th data-t="Location">Location</th><th data-t="Asset">Asset</th><th></th></tr></thead><tbody id="wrows"></tbody></table><div class="empty" id="wempty"></div></div>
-  <div class="scroll" id="pmpage" style="display:none"><table><thead><tr><th><span class="cb"></span><span data-t="Title">Title</span></th><th data-t="Frequency">Frequency</th><th data-t="Location">Location</th><th data-t="Status">Status</th><th data-t="Technician">Technician</th><th data-t="Notes">Notes</th><th></th></tr></thead><tbody id="prows"></tbody></table><div class="empty" id="pempty"></div></div>
+  <div class="scroll" id="pmpage" style="display:none"><table><thead><tr><th><span class="cb"></span><span data-t="Title">Title</span></th><th data-t="Frequency">Frequency</th><th data-t="Location">Location</th><th data-t="Status">Status</th><th data-t="Technician">Technician</th><th data-t="Shift">Shift</th><th data-t="Notes">Notes</th><th></th></tr></thead><tbody id="prows"></tbody></table><div class="empty" id="pempty"></div></div>
 <datalist id="tl"></datalist>
   <div id="aspage" style="display:none"><div id="astats" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 22px;border-bottom:1px solid var(--line)"></div><div class="scroll"><table><thead id="ahead"></thead><tbody id="arows"></tbody></table><div class="empty" id="aempty"></div></div></div>
   <div class="scroll" id="lcpage" style="display:none"><table><thead><tr><th><span class="cb"></span><span data-t="Location">Location</span></th><th data-t="Assets">Assets</th><th data-t="Broken">Broken</th><th data-t="Open work orders">Open work orders</th><th data-t="Overdue PMs">Overdue PMs</th></tr></thead><tbody id="lcrows"></tbody></table><div class="empty" id="lcempty"></div></div>
   <div class="scroll" id="ivpage" style="display:none"><table><thead id="ihead"></thead><tbody id="irows"></tbody></table><div class="empty" id="iempty"></div></div>
   <div class="scroll" id="vnpage" style="display:none"><table><thead><tr><th><span class="cb"></span><span data-t="Vendor">Vendor</span></th><th data-t="What they do">What they do</th><th data-t="Records">Records</th><th data-t="Last record">Last record</th><th data-t="Supplies total">Supplies total</th></tr></thead><tbody id="vrows"></tbody></table><div class="empty" id="vempty"></div></div>
-  <div class="scroll" id="uspage" style="display:none"><table><thead><tr><th><span class="cb"></span><span data-t="Email">Email</span></th><th data-t="Role">Role</th><th data-t="Status">Status</th><th data-t="Invited on">Invited on</th><th></th></tr></thead><tbody id="urows"></tbody></table><div class="empty" id="uempty"></div></div>
+  <div class="scroll" id="uspage" style="display:none"><table><thead><tr><th><span class="cb"></span><span data-t="Email">Email</span></th><th data-t="Role">Role</th><th data-t="Shift">Shift</th><th data-t="Status">Status</th><th data-t="Invited on">Invited on</th><th></th></tr></thead><tbody id="urows"></tbody></table><div class="empty" id="uempty"></div></div>
   <div class="scroll" id="tcpage" style="display:none"><table><thead><tr><th><span class="cb"></span><span data-t="Technician">Technician</span></th><th data-t="Attendance (this month)">Attendance (this month)</th><th data-t="Rating">Rating</th><th data-t="Open work orders">Open work orders</th><th data-t="PMs done">PMs done</th></tr></thead><tbody id="tcrows"></tbody></table><div class="empty" id="tcempty"></div></div>
   <div id="tppage" style="display:none"><div id="tpatt" style="padding:0 22px"></div><div class="dbt" id="tptabs"></div><div style="padding:12px 22px"><select class="in" id="tpsel" aria-label="Technician"></select></div><div class="cgrid" id="tpb"></div></div>
   <div id="atpage" style="display:none">
@@ -190,7 +190,7 @@ body.tech .search,body.tech .filters{display:none}
 <dialog id="ud"><form id="uf"><h2 data-t="Invite user">Invite user</h2>
 <label for="uem" data-t="Email">Email</label><input class="in" id="uem" type="email" inputmode="email" required>
 <label for="urole" data-t="Role">Role</label><select class="in" id="urole"><option value="Manager">Manager</option><option value="Technician">Technician</option></select>
-<div id="unw" hidden><label for="unm" data-t="Name">Name</label><input class="in" id="unm"></div>
+<div id="unw" hidden><label for="unm" data-t="Name">Name</label><input class="in" id="unm"><label for="ush" data-t="Shift">Shift</label><select class="in" id="ush"></select></div>
 <p class="wdesc" id="unote"></p>
 <div class="dacts"><button type="button" class="mini" id="uc" data-t="Cancel">Cancel</button><button type="submit" class="add" data-t="Send invite">Send invite</button></div></form></dialog>
 <dialog id="tcd"><h2 id="tcn"></h2><p class="wref" id="tce"></p><div id="tcb" style="max-height:55vh;overflow:auto"></div>
@@ -358,6 +358,11 @@ function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"
 function nz(s){return String(s||"").toLowerCase().replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").trim()}
 function freqOf(s){var n=nz(s);if(!n)return"";if(/ربع|quarter/.test(n))return"Quarterly";if(/سنو|annual|year/.test(n))return"Yearly";if(/شهر|month/.test(n))return"Monthly";if(/اسبوع|week/.test(n))return"Weekly";if(/يوم|daily|day/.test(n))return"Daily";return""}
 function savePM(){try{localStorage.setItem("fm_pm",JSON.stringify(PM))}catch(e){}}
+var SHIFTS=["Morning","Evening","Night"];
+Object.assign(AR,{"Shift":"الشيفت","Morning":"صباحي","Evening":"مسائي","Night":"ليلي","No shift":"من غير شيفت","No technicians in this shift":"مفيش فنيين في الشيفت ده"});
+function shiftNames(s){return techUsers().filter(function(u){return u.shift===s}).map(function(u){return u.name||u.email})}
+function shiftOpts(cur,none){return '<option value="">'+none+'</option>'+SHIFTS.map(function(s){return '<option value="'+s+'"'+(s===cur?' selected':'')+'>'+t(s)+'</option>'}).join("")}
+function shiftCell(x,i){var n=x.shift?shiftNames(x.shift):[];return '<select class="cell" data-psh="'+i+'" aria-label="Shift" style="min-width:110px">'+shiftOpts(x.shift,"— "+t("No shift"))+'</select>'+(x.shift?'<div class="wdesc" dir="auto">'+(n.length?esc(n.join("، ")):t("No technicians in this shift"))+'</div>':'')}
 function fillTL(){document.getElementById("tl").innerHTML=techs().map(function(n){return '<option value="'+esc(n)+'">'}).join("")}
 function renderPM(){
   var el=document.getElementById("prows");if(!el)return;
@@ -367,7 +372,7 @@ function renderPM(){
   el.innerHTML=rows.map(function(x){var i=PM.indexOf(x);
     var st=x.status==="Done"?'<button type="button" class="k" style="background:none;border:0;padding:0;font:inherit;cursor:pointer;color:#1d7a46;text-decoration:underline" data-pv="'+i+'">'+t("Done")+'</button><button class="mini" data-pr="'+i+'" title="'+t("Reopen")+'" aria-label="'+t("Reopen")+'">↺</button>'
       :'<select class="cell" data-pst="'+i+'" style="color:'+PCOL[x.status]+'" aria-label="Status">'+PS.map(function(s){return '<option value="'+s+'"'+(s===x.status?' selected':'')+'>'+t(s)+'</option>'}).join("")+'</select>';
-    return '<tr'+(x.status==="Overdue"?' class="hi"':'')+'><td dir="auto">'+esc(x.title)+'</td><td>'+esc(x.freq?t(x.freq):x.freqRaw)+'</td><td>'+esc(x.location)+'</td><td style="white-space:nowrap">'+st+'</td><td><input class="cell" list="tl" data-pa="'+i+'" value="'+esc(x.assignee)+'" aria-label="Technician"></td><td><input class="cell" data-pn="'+i+'" value="'+esc(x.notes)+'" aria-label="Notes" style="min-width:160px"></td><td><button class="mini" data-px="'+i+'" aria-label="Remove">✕</button></td></tr>'}).join("");
+    return '<tr'+(x.status==="Overdue"?' class="hi"':'')+'><td dir="auto">'+esc(x.title)+'</td><td>'+esc(x.freq?t(x.freq):x.freqRaw)+'</td><td>'+esc(x.location)+'</td><td style="white-space:nowrap">'+st+'</td><td><input class="cell" list="tl" data-pa="'+i+'" value="'+esc(x.assignee)+'" aria-label="Technician"></td><td>'+shiftCell(x,i)+'</td><td><input class="cell" data-pn="'+i+'" value="'+esc(x.notes)+'" aria-label="Notes" style="min-width:160px"></td><td><button class="mini" data-px="'+i+'" aria-label="Remove">✕</button></td></tr>'}).join("");
   document.getElementById("pempty").innerHTML=PM.length?"":'<p>'+t("No PM sheet yet. Press Upload PM sheet: name, frequency, location.")+'</p>';
 }
 var _al2=applyLang;applyLang=function(){_al2();renderPM()};
@@ -383,10 +388,11 @@ document.getElementById("pdf").onsubmit=function(e){e.preventDefault();var x=PM[
   x.status="Done";x.assignee=document.getElementById("pdby").value.trim();x.doneAt=document.getElementById("pdat").value;x.details=document.getElementById("pdd").value.trim();
   savePM();document.getElementById("pdn").close()};
 document.getElementById("paf").onsubmit=function(e){e.preventDefault();var x=PM[PI];if(!x)return;
-  x.status="Overdue";x.assignee=document.getElementById("pat").value.trim();savePM();document.getElementById("pas").close()};
+  x.status="Overdue";x.assignee=document.getElementById("pat").value.trim();if(x.assignee)x.shift="";savePM();document.getElementById("pas").close()};
 document.addEventListener("change",function(e){var d=e.target.dataset;if(!d)return;
   if(d.pst!==undefined){var i=+d.pst,v=e.target.value;if(v==="Done")openDN(i);else if(v==="Overdue")openAS(i);else{PM[i].status="Pending";savePM();renderPM()}}
-  else if(d.pa!==undefined){PM[+d.pa].assignee=e.target.value.trim();savePM();fillTL()}
+  else if(d.pa!==undefined){var pa=PM[+d.pa];pa.assignee=e.target.value.trim();if(pa.assignee&&pa.status!=="Done")pa.shift="";savePM();fillTL();renderPM()}
+  else if(d.psh!==undefined){var ps=PM[+d.psh];ps.shift=e.target.value;if(ps.shift&&ps.status!=="Done")ps.assignee="";savePM();renderPM()}
   else if(d.pn!==undefined){PM[+d.pn].notes=e.target.value;savePM()}
 });
 document.addEventListener("click",function(e){
@@ -414,7 +420,7 @@ function loadPM(f){
       a.forEach(function(row,j){var title=String(row[0]||"").trim();if(!title)return;
         var raw=String(row[1]||"").trim(),loc=String(row[2]||"").trim(),k=(title+"|"+loc).toLowerCase(),o=old[k],stp=parseSteps(si>-1?row[si]:"");
         if(o){delete old[k];o.freq=freqOf(raw);o.freqRaw=raw;o.steps=stp;out.push(o)}
-        else out.push({id:Date.now()+j,title:title,freq:freqOf(raw),freqRaw:raw,location:loc,steps:stp,status:"Pending",assignee:"",notes:"",doneAt:"",details:""})});
+        else out.push({id:Date.now()+j,title:title,freq:freqOf(raw),freqRaw:raw,location:loc,steps:stp,status:"Pending",assignee:"",shift:"",notes:"",doneAt:"",details:""})});
       PM=out;savePM();cur="PMs";draw();say(m("Imported "+out.length+" PMs.","تم استيراد "+out.length+" صيانة."));
     }catch(err){say(m("Could not read this file. Use .xlsx or .csv.","مقدرتش أقرأ الملف ده. استخدم .xlsx أو .csv."))}
   };
@@ -422,7 +428,7 @@ function loadPM(f){
 }
 document.getElementById("pdl").onclick=function(){
   if(typeof XLSX==="undefined"){say(m("The Excel library did not load.","مكتبة الإكسيل ماتحمّلتش."));return}
-  var rows=[[t("Title"),t("Frequency"),t("Location"),t("Status"),t("Technician"),t("Notes"),t("Done at"),t("What was done")]].concat(PM.map(function(x){return [x.title,x.freq?t(x.freq):x.freqRaw,x.location,t(x.status),x.assignee,x.notes,(x.doneAt||"").replace("T"," "),x.details]}));
+  var rows=[[t("Title"),t("Frequency"),t("Location"),t("Status"),t("Technician"),t("Shift"),t("Notes"),t("Done at"),t("What was done")]].concat(PM.map(function(x){return [x.title,x.freq?t(x.freq):x.freqRaw,x.location,t(x.status),x.assignee,x.shift?t(x.shift):"",x.notes,(x.doneAt||"").replace("T"," "),x.details]}));
   var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),"PM");XLSX.writeFile(wb,"PM_sheet.xlsx");
 };
 
@@ -727,20 +733,22 @@ Object.assign(AR,{"Users":"المستخدمين","Email":"الإيميل","Role"
 function saveUS(){try{localStorage.setItem("fm_users",JSON.stringify(US))}catch(e){}}
 function renderUS(){
   var el=document.getElementById("urows");if(!el)return;
+  var sh=document.getElementById("ush");if(sh)sh.innerHTML=shiftOpts(sh.value,"— "+t("No shift"));
   var q=Q.trim().toLowerCase();
   el.innerHTML=US.map(function(u,i){if(q&&u.email.toLowerCase().indexOf(q)<0)return "";
-    return '<tr><td dir="ltr" style="text-align:start">'+esc(u.email)+(u.name?'<div class="wdesc" dir="auto">'+esc(u.name)+'</div>':'')+'</td><td>'+t(u.role==="Technician"?"Technician":"Manager")+'</td><td><span class="st" style="color:'+(u.status==="Active"?'#1d7a46':'#e6772e')+'">'+t(u.status)+'</span></td><td>'+esc(u.at)+'</td><td><button class="mini" data-ux="'+i+'" aria-label="Remove">✕</button></td></tr>'}).join("");
+    return '<tr><td dir="ltr" style="text-align:start">'+esc(u.email)+(u.name?'<div class="wdesc" dir="auto">'+esc(u.name)+'</div>':'')+'</td><td>'+t(u.role==="Technician"?"Technician":"Manager")+'</td><td>'+(u.role==="Technician"?'<select class="cell" data-ush="'+i+'" aria-label="Shift">'+shiftOpts(u.shift,"— "+t("No shift"))+'</select>':'')+'</td><td><span class="st" style="color:'+(u.status==="Active"?'#1d7a46':'#e6772e')+'">'+t(u.status)+'</span></td><td>'+esc(u.at)+'</td><td><button class="mini" data-ux="'+i+'" aria-label="Remove">✕</button></td></tr>'}).join("");
   document.getElementById("uempty").innerHTML=US.length?"":'<p>'+t("No users yet. Press + Invite user.")+'</p>';
 }
 var _al7=applyLang;applyLang=function(){_al7();renderUS()};
-document.getElementById("uadd").onclick=function(){var e=document.getElementById("uem");e.value="";e.setCustomValidity("");document.getElementById("urole").value="Manager";document.getElementById("unm").value="";document.getElementById("unw").hidden=true;document.getElementById("unm").required=false;document.getElementById("ud").showModal();e.focus()};
+document.addEventListener("change",function(e){var d=e.target.dataset;if(d&&d.ush!==undefined&&US[+d.ush]){US[+d.ush].shift=e.target.value;saveUS();renderUS();renderPM()}});
+document.getElementById("uadd").onclick=function(){var e=document.getElementById("uem");e.value="";e.setCustomValidity("");document.getElementById("urole").value="Manager";document.getElementById("unm").value="";document.getElementById("ush").value="";document.getElementById("unw").hidden=true;document.getElementById("unm").required=false;document.getElementById("ud").showModal();e.focus()};
 document.getElementById("uem").addEventListener("input",function(){this.setCustomValidity("")});
 document.getElementById("uc").onclick=function(){document.getElementById("ud").close()};
 document.getElementById("uf").onsubmit=function(e){
   e.preventDefault();
   var inp=document.getElementById("uem"),em=inp.value.trim().toLowerCase();
   if(US.some(function(u){return u.email===em})){inp.setCustomValidity(t("This email is already in the list."));inp.reportValidity();return}
-  US.push({email:em,role:document.getElementById("urole").value,name:document.getElementById("unm").value.trim(),status:"Invited",at:new Date().toISOString().slice(0,10)});
+  US.push({email:em,role:document.getElementById("urole").value,name:document.getElementById("unm").value.trim(),shift:document.getElementById("urole").value==="Technician"?document.getElementById("ush").value:"",status:"Invited",at:new Date().toISOString().slice(0,10)});
   saveUS();renderUS();document.getElementById("ud").close();
 };
 document.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("[data-ux]");if(!b)return;US.splice(+b.dataset.ux,1);saveUS();renderUS()});
@@ -802,7 +810,7 @@ function tdat(em){return TA[em]||(TA[em]={att:[],rate:[]})}
 function techUsers(){return US.filter(function(u){return u.role==="Technician"})}
 function sameName(a,b){var x=nz(a);return x!==""&&x===nz(b)}
 function techWO(u){return WO.filter(function(w){return sameName(w.assignee,u.name)})}
-function techPM(u){return PM.filter(function(p){return sameName(p.assignee,u.name)})}
+function techPM(u){return PM.filter(function(p){return sameName(p.assignee,u.name)||nz(p.assignee)===nz(u.email)||(p.shift&&p.shift===u.shift&&p.status!=="Done")})}
 function avgRate(u){var r=tdat(u.email).rate;return r.length?Math.round(r.reduce(function(n,x){return n+x.stars},0)/r.length*10)/10:0}
 function attCount(u,st){var mo=today().slice(0,7);return tdat(u.email).att.filter(function(a){return a.status===st&&String(a.date).slice(0,7)===mo}).length}
 var STCOL={"Present":"#1d7a46","Absent":"#d92d20","Late":"#e6772e"};
@@ -865,7 +873,7 @@ function renderTP(){
   }else{
     var dn=techPM(u).filter(function(p){return p.status==="Done"});
     box.innerHTML=(pms.length?pms.map(function(p){var i=PM.indexOf(p);
-      return '<div class="cd"><div style="font-weight:700" dir="auto">'+esc(p.title)+'</div><div class="wdesc">'+[p.freq?t(p.freq):p.freqRaw,p.location].filter(Boolean).map(esc).join(" · ")+'</div><div style="margin-top:10px"><button type="button" class="add" data-tpm="'+i+'">'+t("Do maintenance")+'</button></div></div>'}).join(""):'<div class="cd"><div class="dnone">'+t("No pending maintenance for this technician.")+'</div></div>')+(dn.length?'<div class="cd"><h3>'+t("Done")+' '+dn.length+'</h3>'+dn.slice(-5).reverse().map(function(p){return '<div class="wdesc" style="color:var(--ink)" dir="auto">'+esc(p.title)+' — '+esc((p.doneAt||"").replace("T"," "))+'</div>'}).join("")+'</div>':'');
+      return '<div class="cd"><div style="font-weight:700" dir="auto">'+esc(p.title)+'</div><div class="wdesc">'+[p.freq?t(p.freq):p.freqRaw,p.location,p.shift?t("Shift")+": "+t(p.shift):""].filter(Boolean).map(esc).join(" · ")+'</div><div style="margin-top:10px"><button type="button" class="add" data-tpm="'+i+'">'+t("Do maintenance")+'</button></div></div>'}).join(""):'<div class="cd"><div class="dnone">'+t("No pending maintenance for this technician.")+'</div></div>')+(dn.length?'<div class="cd"><h3>'+t("Done")+' '+dn.length+'</h3>'+dn.slice(-5).reverse().map(function(p){return '<div class="wdesc" style="color:var(--ink)" dir="auto">'+esc(p.title)+' — '+esc((p.doneAt||"").replace("T"," "))+'</div>'}).join("")+'</div>':'');
   }
 }
 var _al9=applyLang;applyLang=function(){_al9();renderTC();renderTP();["tast"].forEach(function(id){var s=document.getElementById(id);if(s)Array.prototype.forEach.call(s.options,function(o){o.textContent=t(o.value)})});var r=document.getElementById("urole");if(r)Array.prototype.forEach.call(r.options,function(o){o.textContent=t(o.value)})};

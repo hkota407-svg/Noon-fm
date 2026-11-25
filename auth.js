@@ -55,7 +55,7 @@ async function enter(want) {            // want = "manager" | "technician"
     const email = (u.email || "").toLowerCase();
     const snap = await getDoc(doc(db, "users", email));
     const d = snap.exists() ? snap.data() : null;
-    if (!d || String(d.role).toLowerCase() !== want) {
+    if (!d || String(d.role).trim().toLowerCase() !== want) {
       await signOut(auth);
       const why = !d ? "not in users" : "role: " + d.role;
       const whyAr = !d ? "الإيميل مش في users" : "الدور: " + d.role;
@@ -118,7 +118,7 @@ onAuthStateChanged(auth, async (u) => {
   if (!u) { setRole(""); return; }
   try {
     const s = await getDoc(doc(db, "users", (u.email || "").toLowerCase()));
-    const r = s.exists() ? String(s.data().role).toLowerCase() : "";
+    const r = s.exists() ? String(s.data().role).trim().toLowerCase() : "";
     if (r !== (ROLE === "tech" ? "technician" : "manager")) { await signOut(auth); setRole(""); }
   } catch (e) { /* ignore */ }
 });

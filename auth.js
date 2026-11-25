@@ -17,7 +17,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-         doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, onSnapshot, writeBatch }
+         doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, or, getDocs, onSnapshot, writeBatch }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // Firebase web config (public values)
@@ -37,6 +37,7 @@ let db;
 try { db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
 catch (e) { db = getFirestore(app); }
 const $ = (id) => document.getElementById(id);
+let myShift = "";                                   // the signed-in technician's shift (from his users doc)
 
 // ---- message under the buttons (survives language toggle) ----
 let last = null;
@@ -79,11 +80,12 @@ async function enter(want) {            // want = "manager" | "technician"
       return;
     }
     last = null;
+    if (want === "technician") syncMyShift(email, d.shift);
     // first successful sign-in turns "Invited" into "Active"
     if (String(d.status || "").toLowerCase() !== "active") updateDoc(doc(db, "users", email), { status: "Active" }).catch(() => {});
     if (want === "technician") {
       if (!US.some((x) => x.email === email)) {
-        US.push({ email, role: "Technician", name: d.name || u.displayName || "", status: "Active", at: new Date().toISOString().slice(0, 10) });
+        US.push({ email, role: "Technician", name: d.name || u.displayName || "", shift: d.shift || "", status: "Active", at: new Date().toISOString().slice(0, 10) });
         saveUS();
       }
       setRole("tech", email);
@@ -102,6 +104,12 @@ $("gm").onclick = () => enter("manager");
 $("gt").onclick = () => enter("technician");
 showNote();
 
+function syncMyShift(email, sh) {
+  myShift = sh || "";
+  const me = US.filter((x) => x.email === email)[0];
+  if (me && (me.shift || "") !== myShift) { me.shift = myShift; saveUS(); }
+}
+
 // ---- sign out ----
 $("nav").addEventListener("click", (e) => {
   if (e.target.closest("[data-so]")) signOut(auth).catch(() => {});
@@ -115,6 +123,7 @@ onAuthStateChanged(auth, async (u) => {
     const s = await getDoc(doc(db, "users", (u.email || "").toLowerCase()));
     const r = s.exists() ? String(s.data().role).trim().toLowerCase() : "";
     if (r !== (ROLE === "tech" ? "technician" : "manager")) { await signOut(auth); stopSync(); setRole(""); return; }
+    if (ROLE === "tech") syncMyShift((u.email || "").toLowerCase(), s.data().shift);
     startSync();
   } catch (e) { /* ignore */ }
 });
@@ -151,7 +160,15 @@ function order(list) {
   if (!ok) list.forEach((x, i) => { x._o = i; });
   else if (miss >= 0) for (let i = miss, n = prev + 1; i < list.length; i++) list[i]._o = n++;
 }
-function recs(arr, keyFn) { order(arr); const ids = uniq(arr.map(keyFn)); return arr.map((x, i) => ({ id: ids[i], data: clean(x) })); }
+function recs(arr, keyFn, map) { order(arr); const ids = uniq(arr.map(keyFn)); return arr.map((x, i) => ({ id: ids[i], data: clean(map ? map(x) : x) })); }
+// every work order / PM carries the technician's EMAIL, so Firestore can hand each technician only his own
+const techEmail = (name) => {
+  const n = nz(name); if (!n) return "";
+  const u = US.filter((x) => x.role === "Technician" && (nz(x.name) === n || String(x.email).toLowerCase() === n))[0];
+  return u ? String(u.email).toLowerCase() : "";
+};
+const withMail = (x) => Object.assign({}, x, { assigneeEmail: ROLE === "tech" ? (x.assigneeEmail || "")
+  : techEmail(x.assignee) || (S.users && S.users.applied ? "" : (x.assigneeEmail || "")) });
 const cap = (s) => { s = String(s || ""); return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase(); };
 const metaOf = (docs, dflt) => { const x = docs.filter((d) => d.data._meta)[0]; return x ? x.data : dflt; };
 
@@ -161,12 +178,12 @@ const SPECS = {
     build: () => recs(R, (x) => safe(x.key || "t" + hash(x.title))),
     apply: (docs) => { window.R = docs.map((d) => d.data); } },
 
-  workOrders: { col: "workOrders", ls: "fm_wo", tech: true, state: () => WO,
-    build: () => recs(WO, (w) => safe(w.uid || w.key || "t" + hash(w.title))),
+  workOrders: { col: "workOrders", ls: "fm_wo", tech: true, mine: true, state: () => WO,
+    build: () => recs(WO, (w) => safe(w.uid || w.key || "t" + hash(w.title)), withMail),
     apply: (docs) => { window.WO = docs.map((d) => d.data); } },
 
-  pms: { col: "pms", ls: "fm_pm", tech: true, state: () => PM,
-    build: () => recs(PM, (p) => safe(p.id != null ? p.id : "t" + hash(p.title + "|" + p.location))),
+  pms: { col: "pms", ls: "fm_pm", tech: true, mine: true, shift: true, state: () => PM,
+    build: () => recs(PM, (p) => safe(p.id != null ? p.id : "t" + hash(p.title + "|" + p.location)), withMail),
     apply: (docs) => { window.PM = docs.map((d) => d.data); } },
 
   assets: { col: "assets", ls: "fm_assets", tech: true, state: () => ASD,
@@ -206,11 +223,11 @@ const SPECS = {
     build: () => recs(VD, (v) => safe(v.id != null ? v.id : "t" + hash(v.name))),
     apply: (docs) => { window.VD = docs.map((d) => d.data); } },
 
-  users: { col: "users", ls: "fm_users", merge: true, state: () => US,
-    norm: (d) => ({ role: String(d.role || "").trim().toLowerCase(), name: d.name || "", status: d.status || "Invited", at: d.at || "" }),
+  users: { col: "users", ls: "fm_users", merge: true, dep: ["workOrders", "pms"], state: () => US,
+    norm: (d) => ({ role: String(d.role || "").trim().toLowerCase(), name: d.name || "", shift: d.shift || "", status: d.status || "Invited", at: d.at || "" }),
     build: () => US.map((u) => ({ id: safe(String(u.email).toLowerCase()), data: SPECS.users.norm(u) })),
     apply(docs) {
-      window.US = docs.map((d) => ({ email: d.id, role: cap(d.data.role), name: d.data.name || "", status: d.data.status || "Invited", at: d.data.at || "" }))
+      window.US = docs.map((d) => ({ email: d.id, role: cap(d.data.role), name: d.data.name || "", shift: d.data.shift || "", status: d.data.status || "Invited", at: d.data.at || "" }))
         .sort((a, b) => String(a.at).localeCompare(String(b.at)) || a.email.localeCompare(b.email));
     } },
 
@@ -239,10 +256,17 @@ function redrawSoon() { clearTimeout(DRAWT); DRAWT = setTimeout(() => { try { wi
 
 function startSync() {
   if (!auth.currentUser || typeof ROLE === "undefined" || !ROLE) return;
-  const key = ROLE + "|" + (auth.currentUser.email || "");
+  const key = ROLE + "|" + (auth.currentUser.email || "") + "|" + (ROLE === "tech" ? myShift : "");
   if (RUN === key) return;
   stopSync(); RUN = key;
   Object.keys(SPECS).forEach((n) => { if (allowed(SPECS[n])) listen(n); });
+  if (ROLE === "tech") {                                 // if the manager moves him to another shift, reload his list
+    const em = (auth.currentUser.email || "").toLowerCase();
+    S._me = { timer: 0, off: onSnapshot(doc(db, "users", em), (snap) => {
+      const sh = ((snap.data() || {}).shift) || "";
+      if (sh !== myShift) { syncMyShift(em, sh); RUN = ""; startSync(); }
+    }, () => {}) };
+  }
 }
 function stopSync() {
   Object.keys(S).forEach((n) => { clearTimeout(S[n].timer); if (S[n].off) S[n].off(); delete S[n]; });
@@ -252,13 +276,21 @@ function listen(n) {
   const sp = SPECS[n];
   const st = (S[n] = { rem: new Map(), snap: null, dirty: false, needApply: false, applied: false, timer: 0, off: null,
     migrate: ROLE === "manager" && !lsGet("fm_mig_" + n) });
-  st.off = onSnapshot(collection(db, sp.col), (snap) => onSnap(n, snap), (err) => syncErr(n, err));
+  const base = collection(db, sp.col);
+  let q = base;
+  if (ROLE === "tech" && sp.mine) {                      // only his own (and, for PMs, his shift's)
+    const mine = where("assigneeEmail", "==", (auth.currentUser.email || "").toLowerCase());
+    q = query(base, sp.shift && myShift ? or(mine, where("shift", "==", myShift)) : mine);
+  }
+  st.off = onSnapshot(q, (snap) => onSnap(n, snap), (err) => syncErr(n, err));
 }
 function applyDocs(n, docs) {
   const sp = SPECS[n];
   docs.sort((a, b) => (a.data._o == null ? -1 : a.data._o) - (b.data._o == null ? -1 : b.data._o));
   try { sp.apply(docs); lsPut(sp.ls, JSON.stringify(sp.state())); } catch (e) { syncErr(n, e); return; }
+  const first = S[n] && !S[n].applied;
   S[n] && (S[n].applied = true);
+  if (ROLE === "manager") { (sp.dep || []).forEach(markDirty); if (first && sp.mine) markDirty(n); }   // keep assigneeEmail up to date
   redrawSoon();
 }
 function onSnap(n, snap) {
@@ -315,6 +347,7 @@ function push(n) {
 function markDirty(n) {
   const st = S[n]; if (!st || !st.applied) return;
   st.dirty = true; clearTimeout(st.timer); st.timer = setTimeout(() => push(n), 500);
+  if (ROLE === "manager") (SPECS[n].dep || []).forEach(markDirty);
 }
 // the page saves with localStorage.setItem("fm_...") - that is our signal that something changed
 Storage.prototype.setItem = function (k, v) {
@@ -325,6 +358,14 @@ Storage.prototype.setItem = function (k, v) {
 function flushAll() { Object.keys(S).forEach((n) => { if (S[n].dirty) { clearTimeout(S[n].timer); push(n); } }); }
 document.addEventListener("visibilitychange", () => { if (document.hidden) flushAll(); });
 window.addEventListener("pagehide", flushAll);
+
+// the technician page matches by email (falls back to the name for old records)
+window.techWO = (u) => WO.filter((w) => (w.assigneeEmail ? w.assigneeEmail === String(u.email).toLowerCase() : sameName(w.assignee, u.name)));
+window.techPM = (u) => {                                 // mine by email/name, or still pending in my shift
+  const em = String(u.email).toLowerCase();
+  return PM.filter((p) => (p.assigneeEmail ? p.assigneeEmail === em : sameName(p.assignee, u.name) || nz(p.assignee) === nz(em))
+    || (p.shift && p.shift === u.shift && p.status !== "Done"));
+};
 
 const _setRole = window.setRole;
 window.setRole = function (r, em) { _setRole(r, em); if (r) startSync(); else stopSync(); };

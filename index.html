@@ -585,20 +585,40 @@ document.getElementById("ilog").onclick=function(){
 document.getElementById("ivlc").onclick=function(){document.getElementById("ivl").close()};
 document.getElementById("iup").onclick=function(){document.getElementById("ifile").click()};
 document.getElementById("ifile").onchange=function(e){var f=e.target.files[0];if(f)loadIV(f);e.target.value=""};
+// find the real header row (skipping title / summary rows) and the sheet that holds the items
+function pickRows(sheets){
+  var KW=/code|كود|sku|name|اسم|صنف|بند|item|part|description|وصف|balance|stock|qty|quantity|رصيد|كميه|unit|وحده|category|تصنيف|min|reorder|location|مكان/,best=null;
+  sheets.forEach(function(a){
+    a=a.filter(function(row){return row.some(function(v){return String(v).trim()})});
+    var lim=Math.min(a.length,40),hr=-1,hs=-1;
+    for(var r=0;r<lim;r++){
+      var cells=a[r].map(function(v){return String(v).trim()}).filter(Boolean);
+      if(cells.length<2)continue;
+      var sc=cells.filter(function(v){return KW.test(nz(v))}).length*10+cells.length;
+      if(sc>hs){hs=sc;hr=r}
+    }
+    if(hr<0)return;
+    var rows=a.slice(hr),n=rows.length-1;
+    if(!best||n>best.n)best={rows:rows,n:n};
+  });
+  return best?best.rows:[];
+}
+function pickIV(wb){return pickRows(wb.SheetNames.map(function(n){return XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:""})}))}
 function loadIV(f){
   var r=new FileReader();
   r.onerror=function(){say(m("Could not read the file.","مقدرتش أقرأ الملف."))};
   r.onload=function(){
     if(typeof XLSX==="undefined"){say(m("The Excel reader did not load. Check the connection and try again.","قارئ الإكسيل ماتحمّلش. اتأكد من النت وجرّب تاني."));return}
     try{
-      var wb=XLSX.read(r.result,{type:"array"}),a=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:""});
-      a=a.filter(function(row){return row.some(function(v){return String(v).trim()})});
+      var wb=XLSX.read(r.result,{type:"array"}),a=pickIV(wb);
       if(a.length<2){say(m("The sheet needs a header row and at least one item.","الشيت لازم يكون فيه صف عناوين وصنف واحد على الأقل."));return}
       var h=a[0].map(function(v){return String(v).trim()}),n=h.length;while(n>0&&!h[n-1])n--;h=h.slice(0,n).map(function(v,i){return v||("Column "+(i+1))});
       var hn=h.map(nz);
       var ai=hn.findIndex(function(v){return /added|received|incoming|وارد|اضافه|توريد|استلام|^in$/.test(v)});
       var wi=hn.findIndex(function(v,i){return i!==ai&&/withdraw|issued|outgoing|منصرف|سحب|صرف|^out$/.test(v)});
-      var bi=hn.findIndex(function(v,i){return i!==ai&&i!==wi&&/balance|stock|qty|quantity|رصيد|كميه|متاح|متبقي|مخزون/.test(v)});
+      var lim=function(v){return /min|max|reorder|حد |الحد|اقل|اعلي/.test(v)};
+      var bi=hn.findIndex(function(v,i){return i!==ai&&i!==wi&&!lim(v)&&/balance|current|on hand|available|closing|رصيد|متاح|متبقي/.test(v)});
+      if(bi<0)bi=hn.findIndex(function(v,i){return i!==ai&&i!==wi&&!lim(v)&&/stock|qty|quantity|كميه|مخزون/.test(v)});
       var ni=hn.findIndex(function(v,i){return i!==ai&&i!==wi&&i!==bi&&/name|اسم|صنف|بند|item|part|قطعه|وصف|description/.test(v)});
       if(ni<0){for(var i=0;i<h.length;i++)if(i!==ai&&i!==wi&&i!==bi){ni=i;break}}
       var addBal=bi<0;if(addBal){h.push("Balance");bi=h.length-1}

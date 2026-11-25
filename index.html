@@ -137,7 +137,16 @@ body.tech .search,body.tech .filters{display:none}
   <div class="scroll" id="vnpage" style="display:none"><table><thead><tr><th><span class="cb"></span><span data-t="Vendor">Vendor</span></th><th data-t="What they do">What they do</th><th data-t="Records">Records</th><th data-t="Last record">Last record</th><th data-t="Supplies total">Supplies total</th></tr></thead><tbody id="vrows"></tbody></table><div class="empty" id="vempty"></div></div>
   <div class="scroll" id="uspage" style="display:none"><table><thead><tr><th><span class="cb"></span><span data-t="Email">Email</span></th><th data-t="Role">Role</th><th data-t="Status">Status</th><th data-t="Invited on">Invited on</th><th></th></tr></thead><tbody id="urows"></tbody></table><div class="empty" id="uempty"></div></div>
   <div class="scroll" id="tcpage" style="display:none"><table><thead><tr><th><span class="cb"></span><span data-t="Technician">Technician</span></th><th data-t="Attendance (this month)">Attendance (this month)</th><th data-t="Rating">Rating</th><th data-t="Open work orders">Open work orders</th><th data-t="PMs done">PMs done</th></tr></thead><tbody id="tcrows"></tbody></table><div class="empty" id="tcempty"></div></div>
-  <div id="tppage" style="display:none"><div class="dbt" id="tptabs"></div><div style="padding:12px 22px"><select class="in" id="tpsel" aria-label="Technician"></select></div><div class="cgrid" id="tpb"></div></div>
+  <div id="tppage" style="display:none"><div id="tpatt" style="padding:0 22px"></div><div class="dbt" id="tptabs"></div><div style="padding:12px 22px"><select class="in" id="tpsel" aria-label="Technician"></select></div><div class="cgrid" id="tpb"></div></div>
+  <div id="atpage" style="display:none">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 22px;border-bottom:1px solid var(--line)">
+      <label class="wdesc" for="atdate" data-t="Date" style="margin:0">Date</label>
+      <input class="in" type="date" id="atdate" style="width:auto">
+      <button type="button" class="mini" id="atall" data-t="Mark all present">Mark all present</button>
+      <span id="atsum" class="wdesc" style="margin:0"></span>
+    </div>
+    <div class="scroll"><table style="min-width:560px"><thead><tr><th data-t="Technician">Technician</th><th data-t="Status">Status</th><th data-t="Notes">Notes</th></tr></thead><tbody id="atrows"></tbody></table><div class="empty" id="atempty"></div></div>
+  </div>
   <div id="dbpage" style="display:none"><div class="dbt" id="dbtabs"></div><div class="kgrid" id="dbk"></div><div class="cgrid" id="dbc"></div></div>
   </main>
 </div>
@@ -187,7 +196,7 @@ body.tech .search,body.tech .filters{display:none}
 <dialog id="tcd"><h2 id="tcn"></h2><p class="wref" id="tce"></p><div id="tcb" style="max-height:55vh;overflow:auto"></div>
 <div class="dacts" style="flex-wrap:wrap"><button type="button" class="mini" id="tcat" data-t="+ Attendance">+ Attendance</button><button type="button" class="mini" id="tcrt" data-t="+ Rating">+ Rating</button><button type="button" class="mini" id="tcc" data-t="Close">Close</button></div></dialog>
 <dialog id="tad"><form id="taf"><h2 data-t="Attendance">Attendance</h2><p class="wref" id="tan"></p>
-<div class="two"><div><label for="tadt" data-t="Date">Date</label><input class="in" type="date" id="tadt" required></div><div><label for="tast" data-t="Status">Status</label><select class="in" id="tast"><option value="Present">Present</option><option value="Absent">Absent</option><option value="Late">Late</option></select></div></div>
+<div class="two"><div><label for="tadt" data-t="Date">Date</label><input class="in" type="date" id="tadt" required></div><div><label for="tast" data-t="Status">Status</label><select class="in" id="tast"><option value="Present">Present</option><option value="Absent">Absent</option><option value="Late">Late</option><option value="Leave">Leave</option></select></div></div>
 <label for="tano" data-t="Notes">Notes</label><input class="in" id="tano">
 <div class="dacts"><button type="button" class="mini" id="tac" data-t="Cancel">Cancel</button><button type="submit" class="add" data-t="Save">Save</button></div></form></dialog>
 <dialog id="trd"><form id="trf"><h2 data-t="Rating">Rating</h2><p class="wref" id="trn"></p>
@@ -233,10 +242,10 @@ function draw(){
    
    '<button type="button" class="site" style="cursor:default">'+t("All sites")+' <span>'+(lang==="ar"?"‹":"›")+'</span></button>'+
    ["Requests","Work Orders","PMs"].map(item).join("")+'<div class="sp"></div>'+
-   ["Assets","Locations","Inventory & Parts","Vendors","Technicians","Users"].map(item).join("")+'<div class="sp"></div>'+
+   ["Assets","Locations","Inventory & Parts","Vendors","Technicians","Attendance","Users"].map(item).join("")+'<div class="sp"></div>'+
    item("Reports & KPIs")+'<div class="grow"></div>';
   document.getElementById("title").textContent=t(cur);
-  document.getElementById("page").style.display=cur==="Requests"?"":"none";document.getElementById("wopage").style.display=cur==="Work Orders"?"":"none";document.querySelector(".add").style.display=cur==="Requests"?"":"none";document.getElementById("addwo").style.display=cur==="Work Orders"?"":"none";document.getElementById("pmpage").style.display=cur==="PMs"?"":"none";document.getElementById("pup").style.display=document.getElementById("pdl").style.display=cur==="PMs"?"":"none";document.getElementById("aspage").style.display=cur==="Assets"?"":"none";document.getElementById("aup").style.display=document.getElementById("adl").style.display=cur==="Assets"?"":"none";document.getElementById("lcpage").style.display=cur==="Locations"?"":"none";document.getElementById("ivpage").style.display=cur==="Inventory & Parts"?"":"none";document.getElementById("iup").style.display=document.getElementById("idl").style.display=document.getElementById("ilog").style.display=cur==="Inventory & Parts"?"":"none";document.getElementById("vnpage").style.display=cur==="Vendors"?"":"none";document.getElementById("vadd").style.display=document.getElementById("vdl").style.display=cur==="Vendors"?"":"none";document.getElementById("uspage").style.display=document.getElementById("uadd").style.display=cur==="Users"?"":"none";document.getElementById("dbpage").style.display=cur==="Reports & KPIs"?"":"none";document.getElementById("tcpage").style.display=cur==="Technicians"?"":"none";document.getElementById("tppage").style.display=cur==="Technician Page"?"":"none";applyLang();
+  document.getElementById("page").style.display=cur==="Requests"?"":"none";document.getElementById("wopage").style.display=cur==="Work Orders"?"":"none";document.querySelector(".add").style.display=cur==="Requests"?"":"none";document.getElementById("addwo").style.display=cur==="Work Orders"?"":"none";document.getElementById("pmpage").style.display=cur==="PMs"?"":"none";document.getElementById("pup").style.display=document.getElementById("pdl").style.display=cur==="PMs"?"":"none";document.getElementById("aspage").style.display=cur==="Assets"?"":"none";document.getElementById("aup").style.display=document.getElementById("adl").style.display=cur==="Assets"?"":"none";document.getElementById("lcpage").style.display=cur==="Locations"?"":"none";document.getElementById("ivpage").style.display=cur==="Inventory & Parts"?"":"none";document.getElementById("iup").style.display=document.getElementById("idl").style.display=document.getElementById("ilog").style.display=cur==="Inventory & Parts"?"":"none";document.getElementById("vnpage").style.display=cur==="Vendors"?"":"none";document.getElementById("vadd").style.display=document.getElementById("vdl").style.display=cur==="Vendors"?"":"none";document.getElementById("uspage").style.display=document.getElementById("uadd").style.display=cur==="Users"?"":"none";document.getElementById("dbpage").style.display=cur==="Reports & KPIs"?"":"none";document.getElementById("tcpage").style.display=cur==="Technicians"?"":"none";document.getElementById("tppage").style.display=cur==="Technician Page"?"":"none";document.getElementById("atpage").style.display=cur==="Attendance"?"":"none";applyLang();
 }
 document.getElementById("nav").addEventListener("click",function(e){var b=e.target.closest("[data-n]");if(b){cur=b.dataset.n;draw()}});
 var R=[],Q="";try{R=JSON.parse(localStorage.getItem("fm_requests")||"[]")}catch(e){R=[]}
@@ -948,6 +957,62 @@ draw=function(){
   document.getElementById("gate").hidden=!!ROLE;
   if(!ROLE&&!GLIT&&!WINIT){initWires();wlayout()}
   renderGate();
+};
+
+// ================= Attendance: manager records daily, technician only views =================
+I["Attendance"]="M4 5h12v11H4zM4 8h12M7 3v3M13 3v3M7.5 12l2 2 3.5-3.5";
+[["Mark all present","تسجيل الكل حضور"],["Today","النهارده"],["Leave","إجازة"],["Not recorded","لسه متسجلش"],["Not recorded yet","لسه متسجلش"],["Date","التاريخ"],["Notes","ملاحظات"],["Technician","الفني"],["Status","الحالة"],["This month","الشهر ده"],["Last records","آخر السجلات"],["Choose a status first","اختار الحالة الأول"]].forEach(function(p){if(!AR[p[0]])AR[p[0]]=p[1]});
+STCOL.Leave="#0b6fb8";
+var ATSTS=["Present","Late","Absent","Leave"];
+function atDate(){return document.getElementById("atdate").value||today()}
+function stTag(s){var c=STCOL[s]||"#8d99a5";return '<span class="st" style="color:'+c+';border-color:'+c+'">'+t(s)+'</span>'}
+function atGet(em,d){return tdat(em).att.filter(function(a){return a.date===d})[0]}
+function atSet(em,d,st,note){var td=tdat(em);td.att=td.att.filter(function(a){return a.date!==d});if(st)td.att.push({date:d,status:st,note:note||""});saveTA()}
+
+function renderAT(){
+  var el=document.getElementById("atrows");if(!el)return;
+  var d=atDate(),q=Q.trim().toLowerCase(),L=techUsers(),c={Present:0,Late:0,Absent:0,Leave:0,none:0};
+  el.innerHTML=L.map(function(u){
+    var r=atGet(u.email,d);c[r?r.status:"none"]++;
+    if(q&&(u.name+" "+u.email).toLowerCase().indexOf(q)<0)return "";
+    var col=r?STCOL[r.status]:"";
+    return '<tr><td dir="auto"><b>'+esc(u.name||u.email)+'</b><div class="wdesc" dir="ltr" style="text-align:start">'+esc(u.email)+'</div></td>'+
+      '<td><select class="cell" data-ats="'+esc(u.email)+'" style="'+(col?'color:'+col+';font-weight:600':'')+'" aria-label="Status"><option value="">— '+t("Not recorded")+'</option>'+ATSTS.map(function(s){return '<option value="'+s+'"'+(r&&r.status===s?' selected':'')+'>'+t(s)+'</option>'}).join("")+'</select></td>'+
+      '<td><input class="cell" data-atn="'+esc(u.email)+'" value="'+esc((r&&r.note)||"")+'" dir="auto" aria-label="Notes"></td></tr>';
+  }).join("");
+  document.getElementById("atempty").innerHTML=L.length?"":'<p>'+t("Add the technicians from the Users page.")+'</p>';
+  document.getElementById("atsum").innerHTML=L.length?ATSTS.map(function(s){return '<span style="color:'+STCOL[s]+'">'+t(s)+' '+c[s]+'</span>'}).join(" · ")+" · "+t("Not recorded")+" "+c.none:"";
+}
+document.getElementById("atdate").value=today();
+document.getElementById("atdate").onchange=renderAT;
+document.getElementById("atall").onclick=function(){
+  var d=atDate();techUsers().forEach(function(u){if(!atGet(u.email,d))atSet(u.email,d,"Present","")});
+  renderAT();renderTC();
+};
+document.querySelector(".search input").addEventListener("input",function(){renderAT()});
+document.addEventListener("change",function(e){
+  var s=e.target.dataset;if(!s)return;
+  if(s.ats!==undefined){var d=atDate(),r=atGet(s.ats,d);atSet(s.ats,d,e.target.value,r?r.note:"");renderAT();renderTC()}
+  else if(s.atn!==undefined){var d2=atDate(),r2=atGet(s.atn,d2);
+    if(!r2){e.target.value="";say(m("Choose a status first","اختار الحالة الأول"));return}
+    atSet(s.atn,d2,r2.status,e.target.value.trim());say("");renderTC()}
+});
+
+// ---- technician: view only his own attendance ----
+function renderTPAtt(){
+  var box=document.getElementById("tpatt");if(!box)return;
+  var u=ROLE==="tech"?techOf(TPS):null;
+  if(!u){box.innerHTML="";return}
+  var all=tdat(u.email).att.slice().sort(function(a,b){return String(b.date).localeCompare(String(a.date))}),
+      td=atGet(u.email,today()),last=all.slice(0,15);
+  box.innerHTML='<div class="cd" style="margin:12px 0"><h3>'+t("Attendance")+'</h3>'+
+    '<div style="margin-bottom:8px">'+t("Today")+': '+(td?stTag(td.status):'<span class="done">'+t("Not recorded yet")+'</span>')+'</div>'+
+    '<div class="wdesc" style="color:var(--ink)">'+t("This month")+': '+ATSTS.map(function(s){return '<span style="color:'+STCOL[s]+'">'+t(s)+' '+attCount(u,s)+'</span>'}).join(" · ")+'</div>'+
+    (last.length?'<div style="margin-top:10px"><b>'+t("Last records")+'</b>'+last.map(function(a){return '<div style="padding:6px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;align-items:center"><span dir="ltr">'+esc(a.date)+'</span>'+stTag(a.status)+(a.note?'<span class="wdesc" dir="auto" style="margin:0;color:var(--ink);flex:1;text-align:end">'+esc(a.note)+'</span>':'')+'</div>'}).join("")+'</div>':'')+
+    '</div>';
+}
+var _al10=applyLang;applyLang=function(){
+  _al10();renderAT();renderTPAtt();
 };
 
 draw();

@@ -57,7 +57,10 @@ async function enter(want) {            // want = "manager" | "technician"
     const d = snap.exists() ? snap.data() : null;
     if (!d || String(d.role).toLowerCase() !== want) {
       await signOut(auth);
-      say("No access. Contact your team manager.", "مفيش صلاحية. تابع مدير التيم.", true);
+      const why = !d ? "not in users" : "role: " + d.role;
+      const whyAr = !d ? "الإيميل مش في users" : "الدور: " + d.role;
+      say("No access for " + email + " (" + why + "). Contact your team manager.",
+          "مفيش صلاحية لـ " + email + " (" + whyAr + "). تابع مدير التيم.", true);
       return;
     }
     last = null;

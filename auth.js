@@ -5,7 +5,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, deleteDoc }
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // Firebase web config (public values)
@@ -122,3 +122,77 @@ onAuthStateChanged(auth, async (u) => {
     if (r !== (ROLE === "tech" ? "technician" : "manager")) { await signOut(auth); setRole(""); }
   } catch (e) { /* ignore */ }
 });
+
+// ---- Attendance sync with Firestore: collection "attendance", doc id = email_date ----
+// index.html keeps working on its local copy (TA); this part mirrors it to/from Firestore.
+const attRef = (em, d) => doc(db, "attendance", String(em).toLowerCase() + "_" + d);
+const attErr = (err) => window.say(m("Attendance sync failed: ", "مزامنة الحضور فشلت: ") + (err.code || err.message));
+
+// manager: write one technician's record for a date (or delete it if cleared)
+async function attPush(em, d) {
+  if (ROLE === "tech" || !auth.currentUser) return;
+  try {
+    const r = atGet(em, d);
+    if (r) {
+      const u = techOf(em);
+      await setDoc(attRef(em, d), { email: String(em).toLowerCase(), name: u ? (u.name || "") : "", date: d, status: r.status, note: r.note || "" });
+    } else {
+      await deleteDoc(attRef(em, d));
+    }
+  } catch (err) { attErr(err); }
+}
+document.addEventListener("change", (e) => {          // status / note edited on the Attendance page
+  const s = e.target.dataset; if (!s) return;
+  const em = s.ats !== undefined ? s.ats : s.atn;
+  if (em !== undefined) attPush(em, atDate());
+});
+$("atall").addEventListener("click", () => {           // "Mark all present"
+  const d = atDate(); techUsers().forEach((u) => attPush(u.email, d));
+});
+$("taf").addEventListener("submit", () => {            // old "+ Attendance" dialog on Technicians page
+  const em = TCUR, d = $("tadt").value; if (em && d) attPush(em, d);
+});
+document.addEventListener("click", (e) => {            // old "x" remove button (runs before the local delete)
+  const b = e.target.closest && e.target.closest("[data-tax]"); if (!b) return;
+  const a = tdat(TCUR).att[+b.dataset.tax];
+  if (a && auth.currentUser) deleteDoc(attRef(TCUR, a.date)).catch(attErr);
+}, true);
+
+// manager: load the selected month into the local copy
+async function attLoadMonth() {
+  if (ROLE === "tech" || !auth.currentUser) return;
+  const ym = atDate().slice(0, 7);
+  try {
+    const s = await getDocs(query(collection(db, "attendance"), where("date", ">=", ym + "-01"), where("date", "<=", ym + "-31")));
+    Object.keys(TA).forEach((em) => { TA[em].att = (TA[em].att || []).filter((a) => String(a.date).slice(0, 7) !== ym); });
+    s.docs.forEach((x) => { const r = x.data(); tdat(r.email).att.push({ date: r.date, status: r.status, note: r.note || "" }); });
+    saveTA(); renderAT(); renderTC();
+  } catch (err) { attErr(err); }
+}
+$("nav").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-n]");
+  if (b && (b.dataset.n === "Attendance" || b.dataset.n === "Technicians")) attLoadMonth();
+});
+$("atdate").addEventListener("change", attLoadMonth);
+
+// technician: load only his own records
+async function attLoadMine() {
+  if (ROLE !== "tech" || !auth.currentUser) return;
+  const em = (auth.currentUser.email || "").toLowerCase();
+  try {
+    const s = await getDocs(query(collection(db, "attendance"), where("email", "==", em)));
+    tdat(em).att = s.docs.map((x) => { const r = x.data(); return { date: r.date, status: r.status, note: r.note || "" }; });
+    saveTA(); renderTPAtt();
+  } catch (err) { attErr(err); }
+}
+let _mineKey = "";
+const _drawBase = window.draw;
+window.draw = function () {
+  _drawBase();
+  if (ROLE === "tech" && auth.currentUser) {
+    const k = auth.currentUser.email + "|" + today();
+    if (_mineKey !== k) { _mineKey = k; attLoadMine(); }
+  } else if (ROLE !== "tech") { _mineKey = ""; }
+};
+onAuthStateChanged(auth, (u) => { if (u) attLoadMine(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && ROLE === "tech") attLoadMine(); });
